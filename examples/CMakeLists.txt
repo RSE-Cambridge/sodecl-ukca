@@ -11,7 +11,9 @@ set(EXAMPLE_SOURCE_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/oculomotor.cl
         ${CMAKE_CURRENT_SOURCE_DIR}/kuramoto_euler.py
         ${CMAKE_CURRENT_SOURCE_DIR}/kuramoto_euler_stochastic.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/kuramoto.cl)
+        ${CMAKE_CURRENT_SOURCE_DIR}/kuramoto.cl
+        ${CMAKE_CURRENT_SOURCE_DIR}/ukca_ie.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/ukca.cl)
 
 set(EXAMPLE_FILES
         ${CMAKE_CURRENT_BINARY_DIR}/oculomotor_euler.py
@@ -22,7 +24,9 @@ set(EXAMPLE_FILES
         ${CMAKE_CURRENT_BINARY_DIR}/oculomotor.cl
         ${CMAKE_CURRENT_BINARY_DIR}/kuramoto_euler.py
         ${CMAKE_CURRENT_BINARY_DIR}/kuramoto_euler_stochastic.py
-        ${CMAKE_CURRENT_BINARY_DIR}/kuramoto.cl)
+        ${CMAKE_CURRENT_BINARY_DIR}/kuramoto.cl
+        ${CMAKE_CURRENT_BINARY_DIR}/ukca_ie.py
+        ${CMAKE_CURRENT_BINARY_DIR}/ukca.cl)
 
 add_custom_command(OUTPUT ${EXAMPLE_FILES}
         COMMAND ${CMAKE_COMMAND} -E copy ${EXAMPLE_SOURCE_FILES} ${CMAKE_CURRENT_BINARY_DIR}/

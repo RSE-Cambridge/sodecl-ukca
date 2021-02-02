@@ -46,7 +46,6 @@ void solvesystem(double jac[_numeq_][_numeq_], double v[_numeq_], double x[_nume
 		x[i] = (v[i] - c[i] * x[i + 1]) / b[i];
 	}
 }
-
 void newton_f(double dt, double t, double initial[_numeq_], double guess[_numeq_], double yout[_numeq_], double p[_numpar_])
 {
 	double detterm[_numeq_];
@@ -61,9 +60,19 @@ void newton_f(double dt, double t, double initial[_numeq_], double guess[_numeq_
 void newton(double dt, double t, double initial[_numeq_], double guess[_numeq_], double detterm[_numeq_], double p[_numpar_])
 {
 	double jac[_numeq_][_numeq_];
+	double inv_jac[_numeq_][_numeq_];
 	double new_out[_numeq_];
+	double new_out2[_numeq_];
 	double multi_out[_numeq_];
 
+    // Kiril: I'm contaminating this code for the purposes of UKCA use case testing, 
+    // where parameters are time dependent (photons during 24-hour cycle)
+    int sun_index = ((int)t/3600) % 24;
+    const double sunlight[24] = {0,0,0,0,0,0.5,1,1.5,2,2.5,3,4,5,4,3,2.5,2,1.5,1,0.5,0,0,0,0};
+    double photons_now = sunlight[sun_index];
+    p[0] = p[0] + 1e-2*photons_now;
+    p[3] = p[3] + 1e-5*photons_now;
+    p[9] = 1e6*photons_now;
 	double err1;
 
 	for (int N = 0; N < 1000; N++)
@@ -81,6 +90,7 @@ void newton(double dt, double t, double initial[_numeq_], double guess[_numeq_],
 		}
 
 		calc_jacobian(guess, jac, p);
+
 		for (int i = 0; i < _numeq_; i++)
 		{
 			for (int j = 0; j < _numeq_; j++)
@@ -92,6 +102,7 @@ void newton(double dt, double t, double initial[_numeq_], double guess[_numeq_],
 		}
 
 		solvesystem(jac, new_out, multi_out);
+
 		for (int i = 0; i < _numeq_; i++)
 		{
 			guess[i] = guess[i] - multi_out[i];
