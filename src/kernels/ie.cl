@@ -6,6 +6,54 @@
 //---------------------------------------------------------------------------//
 
 
+
+void SolveLinearSystem(double A[_numeq_][_numeq_], double *b, double *x) {
+    double lu[_numeq_][_numeq_];
+    for (int i=0; i<_numeq_; i++) {
+        for (int j=0; j<_numeq_; j++) {
+            lu[i][j] = 0.;
+        }
+    }
+    double sum = 0.;
+    for (int i = 0; i < _numeq_; i++)
+    {
+        for (int j = i; j < _numeq_; j++)
+        {
+            sum = 0.;
+            for (int k = 0; k < i; k++)
+                sum += lu[i][k] * lu[k][j];
+            lu[i][j] = A[i][j] - sum;
+        }
+        for (int j = i + 1; j < _numeq_; j++)
+        {
+            sum = 0;
+            for (int k = 0; k < i; k++)
+                sum += lu[j][k] * lu[k][i];
+            lu[j][i] = (1 / lu[i][i]) * (A[j][i] - sum);
+        }
+    }
+
+    // lu = L+U-I
+    // find solution of Ly = b
+    double y[_numeq_];
+    for (int i = 0; i < _numeq_; i++)
+    {
+        sum = 0;
+        for (int k = 0; k < i; k++)
+            sum += lu[i][k] * y[k];
+        y[i] = b[i] - sum;
+    }
+    // find solution of Ux = y
+    for (int i = _numeq_ - 1; i >= 0; i--)
+    {
+        sum = 0;
+        for (int k = i + 1; k < _numeq_; k++)
+            sum += lu[i][k] * x[k];
+        x[i] = (1 / lu[i][i]) * (y[i] - sum);
+    }
+}
+
+
 // The tridiagonal matrix algorithm (Thomas algorithm)
 void solvesystem(double jac[_numeq_][_numeq_], double v[_numeq_], double x[_numeq_])
 {
@@ -75,7 +123,8 @@ void newton(double dt, double t, double initial[_numeq_], double guess[_numeq_],
     p[9] = 1e6*photons_now;
 	double err1;
 
-	for (int N = 0; N < 1000; N++)
+	//for (int N = 0; N < 1000; N++)
+	for (int N = 0; N < 10; N++)
 	{
 		newton_f(dt, t, initial, guess, new_out, p);
 
@@ -101,7 +150,8 @@ void newton(double dt, double t, double initial[_numeq_], double guess[_numeq_],
 			jac[i][i] = jac[i][i] + 1;
 		}
 
-		solvesystem(jac, new_out, multi_out);
+		//solvesystem(jac, new_out, multi_out);
+		SolveLinearSystem(jac, new_out, multi_out);
 
 		for (int i = 0; i < _numeq_; i++)
 		{
