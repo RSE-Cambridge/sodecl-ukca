@@ -10,10 +10,13 @@
 #include <cstdio>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
 
 using namespace std;
 
-std::vector<double> sodeclcall( std::vector<double> &a_t0,
+pybind11::array_t<double> sodeclcall( std::vector<double> &a_t0,
                 std::vector<double> &a_y0,
                 std::vector<double> &a_params,
                 int a_platform, 
@@ -29,7 +32,9 @@ std::vector<double> sodeclcall( std::vector<double> &a_t0,
                 int a_ksteps, 
                 int a_local_group_size)
 {
-    sodecl::solver_Type a_solver;
+	py::array_t<double> py_array;
+	sodecl::solver_Type a_solver;
+
     switch (a_solver_type)
     {
     case 0:
@@ -50,7 +55,8 @@ std::vector<double> sodeclcall( std::vector<double> &a_t0,
     default:
         std::cout << "Unknown SODE solver selection." << std::endl;
         std::vector<double> myvector(0);
-        return myvector;
+				py_array = py::array_t<double>({myvector.size()},{8}, &myvector[0]);
+				return py_array;
     }
 
 	sodecl::sodeclmgr *mysodeclmgr = new sodecl::sodeclmgr("kernels", 
@@ -83,15 +89,23 @@ std::vector<double> sodeclcall( std::vector<double> &a_t0,
 
 	// Setup and run the SODE solver
 	int ret = mysodeclmgr->setup_sode_solver();
-    if (ret == 0)
-    {
-        std::vector<double> myvector(0);
-        return myvector;
-    }
+		if (ret == 0)
+		{
+				std::vector<double> myvector(0);
+				py_array = py::array_t<double>({myvector.size()},{8}, &myvector[0]);
+				return py_array;
+		}
     
 	mysodeclmgr->run_sode_solver();
 
-    return mysodeclmgr->m_output;
+	//return mysodeclmgr->m_output;
+
+	// Explicitly returning a numpy array here somehow prevents a lot of
+	// needless copying/memory usage versus letting Python take care of it on
+	// its own.
+	// Not sure if we can avoid *all* copying without ditching the Py.
+	py_array = py::array_t<double>({mysodeclmgr->m_output.size()},{8}, &mysodeclmgr->m_output[0]);
+	return py_array;
 }
 
 PYBIND11_MODULE(sodecl_interface, m) {
