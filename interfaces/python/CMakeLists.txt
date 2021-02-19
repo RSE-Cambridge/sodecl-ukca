@@ -1,5 +1,5 @@
 
-find_package(Python3 COMPONENTS Development)
+find_package(Python3 COMPONENTS Interpreter Development)
 if (${Python3_FOUND})
     message(STATUS "PYTHON3 FOUND")
     message(STATUS ${Python3_INCLUDE_DIRS})
