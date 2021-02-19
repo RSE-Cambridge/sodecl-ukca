@@ -43,6 +43,20 @@ You will need lsb-core, to install it you the following command in a terminal
 sudo apt install lsb-core
 ```
 
+To generate the makefile for compiling SODECL you will need cmake. To install cmake on Ubuntu use the following command in a terminal
+
+```
+sudo apt install cmake
+```
+
+To use the Python wrapper a number of module must be installed. To install these modules use the following commands in a terminal
+
+```
+sudo apt install python3-numpy
+sudo pip3 install numpy
+sudo pip3 install matplotlib
+```
+
 You will need an OpenCL Runtime. 
 
 ### Intel CPUs/GPUs
@@ -58,25 +72,11 @@ You will need to install the OpenCL library. To do that use the following comman
 
 ```
 sudo apt install ocl-icd-opencl-dev
+```
 
 ### AMD GPUs
 
 For AMD, you need the AMD Accelerated Parallel Processing (APP) runtime. It contains OpenCL runtime and OCL-ICD drivers
-```
-
-To generate the makefile for compiling SODECL you will need cmake. To install cmake on Ubuntu use the following command in a terminal
-
-```
-sudo apt install cmake
-```
-
-To use the Python wrapper a number of module must be installed. To install these modules use the following commands in a terminal
-
-```
-sudo apt install python3-numpy
-sudo pip3 install numpy
-sudo pip3 install matplotlib
-```
 
 ### Installing
 
