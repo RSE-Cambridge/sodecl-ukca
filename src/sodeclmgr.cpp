@@ -1017,10 +1017,14 @@ namespace sodecl {
         //m_output = output_data;
 
         double walltime = start_timer.stop_timer();
-        std::cout << "Compute results runtime: " << walltime << " sec.\n";
-        m_log->write("Compute results runtime: ");
+        std::cout << "# orbits: " << m_list_size << "; #equations per orbit: " << m_num_equat << "; runtime: " << walltime << " sec.\n";
+        m_log->write("# orbits: ");
+        m_log->write(m_list_size);
+        m_log->write("; #equations per orbit: ");
+        m_log->write(m_num_equat);
+        m_log->write("; runtime: ");
         m_log->write(walltime);
-        m_log->write("sec.\n");
+        m_log->write(" sec.\n");
 
         if (m_output_type==sodecl::output_Type::File) {
             output_stream.close();
