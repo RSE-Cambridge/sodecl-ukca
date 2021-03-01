@@ -18,7 +18,7 @@ if __name__ == '__main__':
     solver = 3
     dt = 600
     tspan = 5*86400
-    ksteps = 1
+    ksteps = int(tspan/dt) # important to convert!!
     localgroupsize = 0
     J1a = 1e-30
     J4a = 1e-30
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     O2 = 0.2*M
     H20 = 1e17
 
-    orbits = [1000, 10000, 100000]
+    orbits = [1]
     nequat = 8
     nparams = 11
     nnoi = 0
@@ -65,17 +65,15 @@ if __name__ == '__main__':
                                 orbit, nequat, nnoi,
                                 dt, tspan, ksteps, localgroupsize)
 
-    #print(results)
-    #print(t)
     fig,axs = plt.subplots(3,3)
-    axs[0,0].plot(t,results[0*orbit,:])
-    axs[0,1].plot(t,results[1*orbit,:])
-    axs[0,2].plot(t,results[2*orbit,:])
-    axs[1,0].plot(t,results[3*orbit,:])
-    axs[1,1].plot(t,results[4*orbit,:])
-    axs[1,2].plot(t,results[5*orbit,:])
-    axs[2,0].plot(t,results[6*orbit,:])
-    axs[2,1].plot(t,results[7*orbit,:])
+    axs[0,0].plot(t,results[0])
+    axs[0,1].plot(t,results[1])
+    axs[0,2].plot(t,results[2])
+    axs[1,0].plot(t,results[3])
+    axs[1,1].plot(t,results[4])
+    axs[1,2].plot(t,results[5])
+    axs[2,0].plot(t,results[6])
+    axs[2,1].plot(t,results[7])
 
 
     sunlight = [0,0,0,0,0,0.5,1,1.5,2,2.5,3,4,5,4,3,2.5,2,1.5,1,0.5,0,0,0,0]

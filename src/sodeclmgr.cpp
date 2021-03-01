@@ -661,7 +661,12 @@ namespace sodecl {
             return 0;
         }
 
-        m_mem_y0 = clCreateBuffer(context, CL_MEM_READ_WRITE, list_size*sizeof(cl_double)*equat_num, NULL,
+        // This is the largest array, carrying the results.
+        // It represents the 3D dimensions:
+        //  -> simulated steps (m_kernel_steps)
+        //  -> number of chemicals (equat_num)
+        //  -> number of different systems (list_size)
+        m_mem_y0 = clCreateBuffer(context, CL_MEM_READ_WRITE, m_kernel_steps * list_size*sizeof(cl_double)*equat_num, NULL,
                 &errcode);
         if (errcode!=CL_SUCCESS) {
             return 0;
@@ -739,22 +744,57 @@ namespace sodecl {
         err |= clEnqueueWriteBuffer(commands, m_mem_t0, CL_TRUE, 0, list_size*sizeof(cl_double), m_t0, 0, NULL,
                 NULL);
 
-        cl_double* temp = new cl_double[m_list_size*m_num_equat];
+
+        // This is tricky - convert 3D to 1D
+        // m_kernel_steps x list_size x m_num_equat -> 1D index
+        // sim_step =  0..m_kernel_steps-1 
+        // orbit = 0..list_size-1
+        // ieq = 0..m_num_equat-1
+        //
+        cl_double* temp = new cl_double[m_list_size*m_num_equat*m_kernel_steps ];
+
+        printf("list size = %d m_list_size = %d\n", list_size, m_list_size);
+        // Only allocate first step, the rest will be populated anyway
+
+
         for (int orbit = 0; orbit<list_size; orbit++) {
-            int k = orbit*m_num_equat;
-            for (int ieq = 0; ieq<m_num_equat; ieq++) {
-                int i = k+ieq;
-                temp[i] = m_y0[orbit*equat_num+ieq];
+            for (int sim_step = 0; sim_step<1; sim_step++) {
+                for (int ieq = 0; ieq<m_num_equat; ieq++) {
+                    //(sim_step * m_list_size  + orbit)*m_num_equat + ieq;
+                    int i = (sim_step * m_list_size + orbit) * m_num_equat + ieq;
+                    temp[i] = m_y0[i];
+                }
             }
         }
 
-        err |= clEnqueueWriteBuffer(commands, m_mem_y0, CL_TRUE, 0, list_size*sizeof(cl_double)*equat_num, temp,
-                0, NULL, NULL);
+        for (int sim_step = 0; sim_step<1; sim_step++) {
+            for (int orbit = 0; orbit < 1; orbit++) {
+                for (int ieq = 0; ieq<m_num_equat; ieq++) {
+                    int i =(sim_step * m_list_size  + orbit)*m_num_equat + ieq;
+                    printf("Step 0, orbit 0; elem %d value = %lf\n", i, temp[i]);
+                }
+            }
+        }
 
+
+        printf("Will try to set m_mem_y0 to %d * %d * %d\n", m_kernel_steps, list_size, equat_num);
+        printf("Will try to value for first set m_mem_y0 to %d * %d * %d\n", m_kernel_steps, list_size, equat_num);
+        err |= clEnqueueWriteBuffer(commands, m_mem_y0, CL_TRUE, 0, m_kernel_steps * list_size*sizeof(cl_double)*equat_num, temp,
+                0, NULL, NULL);
         delete[] temp;
+
+        if (err!=CL_SUCCESS) {
+            std::cout << "Error: Failed to write to source array! for m_kernel_steps" << std::endl;
+            return 0;
+        }
 
         err |= clEnqueueWriteBuffer(commands, m_mem_params, CL_TRUE, 0, list_size*sizeof(cl_double)*param_num,
                 m_params, 0, NULL, NULL);
+
+        if (err!=CL_SUCCESS) {
+            std::cout << "Error: Failed to write to source array! for m_mem_params" << std::endl;
+            return 0;
+        }
 
         if (m_num_noi>0) {
             err |= clEnqueueWriteBuffer(commands, m_mem_rcounter, CL_TRUE, 0, list_size*sizeof(cl_double),
@@ -922,13 +962,14 @@ namespace sodecl {
     sodeclmgr::run_sode_solver()
     {
         // Output binary files
+        const int total_size = m_list_size*m_num_equat*m_kernel_steps;
         std::ofstream output_stream;
         if (m_output_type==sodecl::output_Type::File) {
             output_stream.open(m_outputfile_str, std::ios::binary | std::ios::app | std::ios::out);
         }
 
         cl_double* t_out = new cl_double[m_list_size];
-        cl_double* orbits_out = new cl_double[m_list_size*m_num_equat];
+        cl_double* orbits_out = new cl_double[total_size];
 
         size_t global = size_t(m_list_size);
         size_t local;
@@ -938,83 +979,57 @@ namespace sodecl {
             local = m_local_group_size;
         }
 
-        //cout << "The local group size is: " << local << endl;
         m_log->write("The local group size is: ");
         m_log->write((double) local);
         m_log->write("\n");
 
         timer start_timer;
 
-        // Run the initial values to the output file.
-        //std::cout << "Running kernel.." << std::endl;
+        std::cout << "About to run OpenCL kernel\n";
         cl_int err;
-        for (int j = 0; j<(m_int_time/(m_dt*m_kernel_steps)); j++) {
-            //std::cout << "Running kernel.." << std::endl;
-            ////err = clEnqueueReadBuffer(m_command_queues[0], m_mem_t0, CL_TRUE, 0, m_list_size * sizeof(cl_double), t_out, 0, NULL, NULL);
-            err = clEnqueueReadBuffer(m_command_queues[0], m_mem_y0, CL_TRUE, 0,
-                    m_list_size*sizeof(cl_double)*m_num_equat, orbits_out, 0, NULL, NULL);
-
-            try {
-                if (local!=0) {
-                    err = clEnqueueNDRangeKernel(m_command_queues[0], m_kernels[0], 1, NULL, &global, &local, 0,
-                            NULL, NULL);
-                }
-                else {
-                    err = clEnqueueNDRangeKernel(m_command_queues[0], m_kernels[0], 1, NULL, &global, NULL, 0, NULL,
-                            NULL);
-                }
+        try {
+            if (local!=0) {
+                err = clEnqueueNDRangeKernel(m_command_queues[0], m_kernels[0], 1, NULL, &global, &local, 0,
+                        NULL, NULL);
             }
-            catch (const std::exception& e) {
-                m_log->write("The call to the OpenCL device has failed.");
-                m_log->write(e.what());
-            }
-
-            if (err) {
-                //cerr << "Error: Failed to execute kernel!" << std::endl;
-                m_log->write("Error: Failed to execute kernel!");
-                return 0;
-            }
-            clFlush(m_command_queues[0]);
-
-            // Save data to disk or to data array - all variables
-            for (int jo = 0; jo<m_num_equat; jo++) {
-                int e = m_outputPattern[jo];
-                if (e>0) {
-                    for (int ji = jo; ji<m_list_size*m_num_equat; ji = ji+m_num_equat) {
-                        switch (m_output_type) {
-                        case sodecl::output_Type::Array :m_output.push_back(orbits_out[ji]);
-                            break;
-                        case sodecl::output_Type::File :
-                            output_stream.write((char*) (&orbits_out[ji]), sizeof(cl_double));
-                            break;
-                        case sodecl::output_Type::None :break;
-                        }
-                    }
-                }
+            else {
+                err = clEnqueueNDRangeKernel(m_command_queues[0], m_kernels[0], 1, NULL, &global, NULL, 0, NULL,
+                        NULL);
             }
         }
+        catch (const std::exception& e) {
+            m_log->write("The call to the OpenCL device has failed.");
+            m_log->write(e.what());
+        }
 
-        // Save the data from the last kernel call.
+        if (err) {
+            //cerr << "Error: Failed to execute kernel!" << std::endl;
+            m_log->write("Error: Failed to execute kernel!");
+            return 0;
+        }
+        clFlush(m_command_queues[0]);
         err = clEnqueueReadBuffer(m_command_queues[0], m_mem_y0, CL_TRUE, 0,
-                m_list_size*sizeof(cl_double)*m_num_equat, orbits_out, 0, NULL, NULL);
+                total_size*sizeof(cl_double), orbits_out, 0, NULL, NULL);
+
         // Save data to disk or to data array - all variables
-        for (int jo = 0; jo<m_num_equat; jo++) {
-            int e = m_outputPattern[jo];
-            if (e>0) {
-                for (int ji = jo; ji<m_list_size*m_num_equat; ji = ji+m_num_equat) {
-                    //m_output.push_back(orbits_out[ji]);
+        // 1D -> 3D
+        // ind -> (simulated timestep, orbit, equation)
+        for (int jl = 0; jl<m_kernel_steps; jl++) {
+            for (int jo = 0; jo<m_list_size ; jo++) {
+                for (int ji = 0; ji<m_num_equat; ji++) {
+                    int i = m_num_equat* (jl*m_list_size+jo) +ji;
                     switch (m_output_type) {
-                    case sodecl::output_Type::Array :m_output.push_back(orbits_out[ji]);
-                        break;
-                    case sodecl::output_Type::File :output_stream.write((char*) (&orbits_out[ji]), sizeof(cl_double));
-                        break;
-                    case sodecl::output_Type::None :break;
+                        //case sodecl::output_Type::Array :m_output.push_back(orbits_out[i]);
+                        case sodecl::output_Type::Array :m_output.push_back(orbits_out[i]);
+                                                         break;
+                        case sodecl::output_Type::File :
+                                                         output_stream.write((char*) (&orbits_out[i]), sizeof(cl_double));
+                                                         break;
+                        case sodecl::output_Type::None :break;
                     }
                 }
             }
         }
-
-        //m_output = output_data;
 
         double walltime = start_timer.stop_timer();
         std::cout << "# orbits: " << m_list_size << "; #equations per orbit: " << m_num_equat << "; runtime: " << walltime << " sec.\n";

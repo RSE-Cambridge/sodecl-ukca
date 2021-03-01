@@ -78,6 +78,6 @@ def sodecl(openclplatform, opencldevice, openclkernel,
 
     results = results.reshape(orbits*nequat, int(results.shape[0] / (orbits*nequat)), order='F')
 
-    t=numpy.arange(0, tspan+dt*ksteps, dt*ksteps)
+    t=numpy.arange(0, tspan, dt)
 
     return t, results
